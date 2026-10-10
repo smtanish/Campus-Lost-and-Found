@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% from "_macros.html" import card %}
+{% block title %}Search{% endblock %}
+{% block content %}
+<h1>Search reports</h1>
+<form class="panel form" method="get">
+  <div class="row">
+    <label class="grow">What
+      <input name="q" value="{{ args.get('q', '') }}" placeholder="e.g. blue water bottle, earphones">
+    </label>
+    <label>Match by
+      <select name="mode">
+        <option value="keyword" {{ 'selected' if args.get('mode') != 'semantic' }}>Keywords (text index)</option>
+        <option value="semantic" {{ 'selected' if args.get('mode') == 'semantic' }}>Meaning (vector search)</option>
+      </select>
+    </label>
+  </div>
+  <div class="row wrap">
+    <label>Type
+      <select name="type">
+        <option value="">Both</option>
+        <option value="lost" {{ 'selected' if args.get('type') == 'lost' }}>Lost</option>
+        <option value="found" {{ 'selected' if args.get('type') == 'found' }}>Found</option>
+      </select>
+    </label>
+    <label>Category
+      <select name="category"><option value="">Any</option>
+        {% for c in categories %}<option {{ 'selected' if args.get('category') == c }}>{{ c }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Near
+      <select name="location"><option value="">Anywhere</option>
+        {% for name in locations %}<option {{ 'selected' if args.get('location') == name }}>{{ name }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Within
+      <select name="radius">
+        {% for r in [100, 200, 300, 500, 1000] %}<option value="{{ r }}" {{ 'selected' if args.get('radius', '300') == r|string }}>{{ r }} m</option>{% endfor %}
+      </select>
+    </label>
+    <label>From<input type="date" name="date_from" value="{{ args.get('date_from', '') }}"></label>
+    <label>To<input type="date" name="date_to" value="{{ args.get('date_to', '') }}"></label>
+  </div>
+  <label class="check"><input type="checkbox" name="include_resolved" value="1" {{ 'checked' if args.get('include_resolved') }}> Include returned items</label>
+  <button class="btn">Search</button>
+</form>
+{% if searched %}
+<p class="muted">{{ results|length }} result(s)</p>
+<div class="grid">
+  {% for r in results %}
+  <div class="result">
+    {{ card(r) }}
+    <p class="meta">{% if r.distance is number %}{{ r.distance|round|int }} m away{% endif %}
+      {% if r.relevance %} · relevance {{ r.relevance }}{% endif %}</p>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

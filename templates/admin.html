@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block head %}<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">{% endblock %}
+{% block content %}
+<h1>Dashboard</h1>
+<div class="tiles">
+  <div class="tile"><b>{{ s.counts.get('lost_open', 0) }}</b><span>open lost reports</span></div>
+  <div class="tile"><b>{{ s.counts.get('found_open', 0) }}</b><span>found items waiting</span></div>
+  <div class="tile"><b>{{ s.recovery_rate }}%</b><span>of lost items recovered</span></div>
+  <div class="tile"><b>{{ s.avg_recovery_hours if s.avg_recovery_hours is not none else '-' }}</b><span>avg hours to recover</span></div>
+</div>
+
+<h2>Claims to verify ({{ pending|length }})</h2>
+{% for c in pending %}
+<div class="panel claim">
+  <div>
+    <p><b>{{ c.claimant.name }}</b> ({{ c.claimant.email }}) claims <a href="{{ url_for('item', item_id=c.item._id) }}">{{ c.item.title }}</a></p>
+    <p class="small">Their proof: "{{ c.proof }}"</p>
+    <p class="small">Finder's hidden detail: <b>{{ c.item.private_note or 'none given' }}</b></p>
+    <p class="meta">{{ c.created_at|ist }}{% if c.lost_report_id %} · linked to their lost report{% endif %}</p>
+  </div>
+  <div class="actions">
+    <form method="post" action="{{ url_for('review_claim', claim_id=c._id, action='approve') }}"><button class="btn small found">Approve</button></form>
+    <form method="post" action="{{ url_for('review_claim', claim_id=c._id, action='reject') }}"><button class="btn small lost">Reject</button></form>
+  </div>
+</div>
+{% else %}<p class="muted">No pending claims.</p>{% endfor %}
+
+<div class="two">
+  <div class="panel">
+    <h3>Reports by category</h3>
+    {% set top = s.by_category|map(attribute='lost')|max if s.by_category else 1 %}
+    {% set topf = s.by_category|map(attribute='found')|max if s.by_category else 1 %}
+    {% set scale = [top, topf, 1]|max %}
+    {% for c in s.by_category %}
+    <div class="hbar"><span>{{ c._id }}</span>
+      <div><i class="lost" style="width: {{ 100 * c.lost / scale }}%"></i><i class="found" style="width: {{ 100 * c.found / scale }}%"></i></div>
+      <em>{{ c.lost }} / {{ c.found }}</em></div>
+    {% endfor %}
+    <p class="meta"><span class="key lost"></span> lost <span class="key found"></span> found</p>
+  </div>
+  <div class="panel">
+    <h3>Where things get lost</h3>
+    <div id="hotmap" class="map"></div>
+    {% for h in s.hotspots %}<p class="small">{{ h._id }}: <b>{{ h.n }}</b></p>{% endfor %}
+  </div>
+  <div class="panel">
+    <h3>Time of day items go missing</h3>
+    {% set hmax = [s.by_hour|map(attribute='n')|max, 1]|max %}
+    <div class="cols">
+      {% for h in s.by_hour %}<div title="{{ h.n }} reports"><i style="height: {{ 100 * h.n / hmax }}%"></i><span>{{ h._id if h._id % 3 == 0 else '&nbsp;'|safe }}</span></div>{% endfor %}
+    </div>
+  </div>
+  <div class="panel">
+    <h3>Reports in the last 14 days</h3>
+    {% set dmax = [s.daily|map(attribute='n')|max, 1]|max %}
+    <div class="cols">
+      {% for d in s.daily %}<div title="{{ d._id }}: {{ d.n }}"><i style="height: {{ 100 * d.n / dmax }}%"></i><span>{{ d._id[8:] }}</span></div>{% endfor %}
+    </div>
+  </div>
+  <div class="panel">
+    <h3>Attribute fields in use</h3>
+    <p class="meta">Every category stores different fields. Counted with $objectToArray + $unwind.</p>
+    {% for f in s.fields_used %}<span class="tag">{{ f._id|replace('_', ' ') }} · {{ f.n }}</span> {% endfor %}
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const center = {{ center|tojson }};
+const spots = {{ s.hotspots|tojson }};
+const map = L.map("hotmap", {scrollWheelZoom: false}).setView([center[1], center[0]], 16);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {attribution: "© OpenStreetMap"}).addTo(map);
+spots.forEach(s => {
+  const [lng, lat] = s.geo.coordinates;
+  L.circle([lat, lng], {radius: 15 + s.n * 10, color: "#c2410c"}).addTo(map).bindPopup(`${s._id}: ${s.n}`);
+});
+</script>
+{% endblock %}

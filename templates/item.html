@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% from "_macros.html" import attrs %}
+{% block title %}{{ item.title }}{% endblock %}
+{% block head %}<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">{% endblock %}
+{% block content %}
+<div class="item">
+  <div class="panel">
+    <div class="tags"><span class="badge {{ item.type }}">{{ item.type }}</span><span class="tag">{{ item.category }}</span>
+      {% if item.status == 'resolved' %}<span class="tag done">returned</span>{% endif %}</div>
+    <h1>{{ item.title }}</h1>
+    {% if item.image_id %}<img class="photo" src="{{ url_for('image', image_id=item.image_id) }}" alt="photo of the item">{% endif %}
+    <p>{{ item.description }}</p>
+    {{ attrs(item) }}
+    <p class="meta">{{ 'Lost' if item.type == 'lost' else 'Found' }} at <b>{{ item.location.name }}</b>{% if item.location.detail %} ({{ item.location.detail }}){% endif %} around {{ item.event_time|ist }}</p>
+    <p class="meta">Reported by {{ item.reporter.name }}</p>
+    <div id="map" class="map"></div>
+    {% if is_admin %}
+    <div class="admin-box">
+      <h3>Admin</h3>
+      <p>Contact: {{ item.reporter.email }} {{ item.reporter.phone or '' }}</p>
+      {% if item.private_note %}<p>Hidden detail: <b>{{ item.private_note }}</b></p>{% endif %}
+      {% for c in item_claims %}<p class="meta">Claim by {{ c.claimant.name }} ({{ c.status }}): "{{ c.proof }}"</p>{% endfor %}
+      {% if item.status == 'open' %}
+      <form method="post" action="{{ url_for('resolve_item', item_id=item._id) }}"><button class="btn small">Mark as resolved</button></form>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+  <div>
+    {% if item.type == 'found' and item.status == 'open' %}
+    <form class="panel form" method="post" action="{{ url_for('claim', item_id=item._id) }}">
+      <h2>Is this yours?</h2>
+      {% if lost_doc %}<p class="muted">Claiming for your report "{{ lost_doc.title }}".</p>
+      <input type="hidden" name="lost_id" value="{{ lost_doc._id }}">{% endif %}
+      <label>Your name<input name="name" required value="{{ lost_doc.reporter.name if lost_doc else '' }}"></label>
+      <label>College email<input type="email" name="email" required value="{{ lost_doc.reporter.email if lost_doc else '' }}"></label>
+      <label>Prove it's yours
+        <textarea name="proof" rows="3" required minlength="10" placeholder="Describe something only the owner would know"></textarea>
+      </label>
+      <button class="btn found">Send claim</button>
+    </form>
+    {% endif %}
+    <h2>{{ 'Possible matches' if item.status == 'open' else 'This report is closed' }}</h2>
+    {% if item.status == 'open' and not matches %}<p class="muted">No likely matches yet. New reports are compared automatically.</p>{% endif %}
+    {% for m in matches %}
+    {% set r = m.report %}
+    <div class="match">
+      <div class="match-head">
+        <a href="{{ url_for('item', item_id=r._id) }}{{ '?lost=' ~ item._id if item.type == 'lost' else '' }}"><b>{{ r.title }}</b></a>
+        <span class="score">{{ (m.score * 100)|round|int }}%</span>
+      </div>
+      <p class="meta">{{ r.location.name }} · {{ r.event_time|ist }} · {{ m.distance_m }} m away · {{ m.gap_hours|abs }} h {{ 'later' if (item.type == 'lost') == (m.gap_hours >= 0) else 'earlier' }}</p>
+      <p class="small">{{ r.description }}</p>
+      <div class="parts">
+        {% for k, v in m.parts.items() %}
+        <div class="part"><span>{{ k }}</span><div class="bar"><i style="width: {{ (v * 100)|round|int }}%"></i></div></div>
+        {% endfor %}
+      </div>
+      {% if m.attr_hits %}<p class="meta">Same {{ m.attr_hits|join(', ')|replace('_', ' ') }}</p>{% endif %}
+      {% if item.type == 'lost' %}<a class="btn small found" href="{{ url_for('item', item_id=r._id, lost=item._id) }}">This looks like mine</a>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const [lng, lat] = {{ item.location.geo.coordinates|tojson }};
+const map = L.map("map", {scrollWheelZoom: false}).setView([lat, lng], 17);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {attribution: "© OpenStreetMap"}).addTo(map);
+L.marker([lat, lng]).addTo(map).bindPopup({{ item.location.name|tojson }});
+</script>
+{% endblock %}

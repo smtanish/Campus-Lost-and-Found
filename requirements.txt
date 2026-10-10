@@ -1,0 +1,6 @@
+flask>=3.0
+pymongo>=4.7
+python-dotenv>=1.0
+fastembed>=0.4
+numpy>=1.26
+tzdata

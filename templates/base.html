@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Campus Lost & Found{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+{% block head %}{% endblock %}
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="{{ url_for('home') }}"><span class="dot"></span>Campus Lost &amp; Found</a>
+  <nav>
+    <a href="{{ url_for('new_report', kind='lost') }}">I lost something</a>
+    <a href="{{ url_for('new_report', kind='found') }}">I found something</a>
+    <a href="{{ url_for('search') }}">Search</a>
+    {% if is_admin %}<a href="{{ url_for('admin') }}">Dashboard</a><a href="{{ url_for('admin_logout') }}">Log out</a>
+    {% else %}<a href="{{ url_for('admin_login') }}">Admin</a>{% endif %}
+  </nav>
+</header>
+<main>
+  {% with msgs = get_flashed_messages(with_categories=true) %}
+  {% for cat, m in msgs %}<div class="flash {{ cat }}">{{ m }}</div>{% endfor %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</main>
+<footer>NoSQL course project · MongoDB Atlas + Flask</footer>
+{% block scripts %}{% endblock %}
+</body>
+</html>

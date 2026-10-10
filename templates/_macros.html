@@ -1,0 +1,19 @@
+{% macro card(r, extra='') %}
+<a class="card" href="{{ url_for('item', item_id=r._id) }}{{ extra }}">
+  {% if r.image_id %}<img src="{{ url_for('image', image_id=r.image_id) }}" alt="">{% endif %}
+  <div class="card-body">
+    <div class="tags"><span class="badge {{ r.type }}">{{ r.type }}</span><span class="tag">{{ r.category }}</span>
+      {% if r.status == 'resolved' %}<span class="tag done">returned</span>{% endif %}</div>
+    <h3>{{ r.title }}</h3>
+    <p class="meta">{{ r.location.name }} · {{ r.event_time|ist }}</p>
+  </div>
+</a>
+{% endmacro %}
+
+{% macro attrs(r) %}
+{% if r.attributes %}
+<dl class="attrs">
+  {% for k, v in r.attributes.items() %}<dt>{{ k|replace('_', ' ') }}</dt><dd>{{ v }}</dd>{% endfor %}
+</dl>
+{% endif %}
+{% endmacro %}

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% from "_macros.html" import card %}
+{% block content %}
+<section class="hero">
+  <div>
+    <h1>Lost something on campus?</h1>
+    <p>Report what you lost or found. We compare every report against the others by description, place and time, and point out the ones that look like the same object.</p>
+    <div class="actions">
+      <a class="btn lost" href="{{ url_for('new_report', kind='lost') }}">Report a lost item</a>
+      <a class="btn found" href="{{ url_for('new_report', kind='found') }}">Report a found item</a>
+    </div>
+  </div>
+  <div class="numbers">
+    <div><b>{{ counts.lost }}</b><span>still missing</span></div>
+    <div><b>{{ counts.found }}</b><span>waiting for owner</span></div>
+    <div><b>{{ counts.resolved }}</b><span>reports closed</span></div>
+  </div>
+</section>
+<h2>Recently lost</h2>
+<div class="grid">{% for r in recent_lost %}{{ card(r) }}{% else %}<p class="muted">Nothing reported yet.</p>{% endfor %}</div>
+<h2>Recently found</h2>
+<div class="grid">{% for r in recent_found %}{{ card(r) }}{% else %}<p class="muted">Nothing reported yet.</p>{% endfor %}</div>
+{% endblock %}

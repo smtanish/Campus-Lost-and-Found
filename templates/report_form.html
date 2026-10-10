@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Report a {{ kind }} item{% endblock %}
+{% block content %}
+<h1>{{ 'I lost something' if kind == 'lost' else 'I found something' }}</h1>
+<p class="muted">{{ 'Describe it as well as you can, the details help us find it.' if kind == 'lost' else 'Thanks for handing it in. Describe it, but keep one detail back so the real owner can prove it is theirs.' }}</p>
+<form class="panel form" method="post" enctype="multipart/form-data">
+  <div class="row">
+    <label>Category
+      <select name="category" id="category" required>
+        <option value="">Choose...</option>
+        {% for c in categories %}<option {{ 'selected' if form.get('category') == c }}>{{ c }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Short title
+      <input name="title" required minlength="3" maxlength="100" value="{{ form.get('title', '') }}" placeholder="e.g. Black AirPods Pro">
+    </label>
+  </div>
+  <div id="attr-fields" class="row wrap"></div>
+  <label>Description
+    <textarea name="description" rows="3" required placeholder="Colour, marks, stickers, what was inside...">{{ form.get('description', '') }}</textarea>
+  </label>
+  <div class="row">
+    <label>Where
+      <select name="location" required>
+        <option value="">Choose a place...</option>
+        {% for name in locations %}<option {{ 'selected' if form.get('location') == name }}>{{ name }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Exact spot (optional)
+      <input name="location_detail" value="{{ form.get('location_detail', '') }}" placeholder="e.g. 2nd floor reading hall">
+    </label>
+    <label>When (approx.)
+      <input type="datetime-local" name="event_time" id="event_time" required value="{{ form.get('event_time', '') }}">
+    </label>
+  </div>
+  <label>Photo (optional)
+    <input type="file" name="photo" accept="image/*">
+  </label>
+  {% if kind == 'found' %}
+  <label>Hidden detail for verification (only admins see this)
+    <input name="private_note" value="{{ form.get('private_note', '') }}" placeholder="e.g. the wallpaper is a cat, initials scratched on the back">
+  </label>
+  {% endif %}
+  <h3>Your details</h3>
+  <div class="row">
+    <label>Name<input name="name" required minlength="2" value="{{ form.get('name', '') }}"></label>
+    <label>College email<input type="email" name="email" required value="{{ form.get('email', '') }}"></label>
+    <label>Phone (optional)<input name="phone" value="{{ form.get('phone', '') }}"></label>
+  </div>
+  <button class="btn {{ kind }}" type="submit">Submit report</button>
+</form>
+{% endblock %}
+{% block scripts %}
+<script>
+// each category has different fields, so we build them when the category changes
+const fields = {{ categories|tojson }};
+const saved = {{ (form.to_dict() if form.to_dict is defined else {})|tojson }};
+const box = document.getElementById("attr-fields");
+const select = document.getElementById("category");
+function render() {
+  box.innerHTML = "";
+  (fields[select.value] || []).forEach(([key, label, options]) => {
+    const wrap = document.createElement("label");
+    wrap.textContent = label;
+    let input;
+    if (options) {
+      input = document.createElement("select");
+      input.add(new Option("-", ""));
+      options.forEach(o => input.add(new Option(o, o)));
+    } else {
+      input = document.createElement("input");
+    }
+    input.name = "attr_" + key;
+    input.value = saved["attr_" + key] || "";
+    wrap.appendChild(input);
+    box.appendChild(wrap);
+  });
+}
+select.addEventListener("change", render);
+render();
+// default the time to now (local) and block future dates
+const t = document.getElementById("event_time");
+const now = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+t.max = now;
+if (!t.value) t.value = now;
+</script>
+{% endblock %}
